@@ -1,0 +1,30 @@
+version: "2"
+
+services:
+  nginx-foo:
+    restart: always
+    image: <RUN_DOCKERBUILD.PY>
+    # ports:
+    #   - 1234:1234
+    # volumes:
+    #   - data:/data
+    logging:
+      driver: syslog
+    environment:
+      - FOO=bar
+
+  busybox-bar:
+    restart: always
+    image: <RUN_DOCKERBUILD.PY>
+    # ports:
+    #   - 1234:1234
+    # volumes:
+    #   - data:/data
+    logging:
+      driver: syslog
+    environment:
+      - FOO=bar
+
+# Persistent Data Volumes
+# volumes:
+#   data:
