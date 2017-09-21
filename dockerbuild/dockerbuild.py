@@ -58,6 +58,17 @@ def write_file(filename, content):
         sys.exit(1)
 
 
+def backup_file(filename):
+    content = open_file(filename)
+    write_file(filename+".bkp", content)
+
+
+def restore_file(filename):
+    content = open_file(filename+".bkp")
+    write_file(filename, content)
+    os.remove(filename+".bkp")
+
+
 def get_docker_client():
 
     return docker.DockerClient(base_url='unix:///var/run/docker.sock', version="auto")
@@ -160,13 +171,13 @@ def replace_image_in_compose(filename, service, tag):
             new_filedata.append(line)
             continue
 
-        if service in line and replace_mode == 0:
+        if re.match('^\s*'+ service +':', line) and replace_mode == 0:
             replace_mode = 1
             new_filedata.append(line)
             continue
 
         if replace_mode == 1 and re.match('^\s*image:', line):
-            line = "    image: " + tag
+            line = line.split(':')[0] + ': ' + tag
             replace_mode = 2
 
         new_filedata.append(line)
@@ -219,6 +230,8 @@ if __name__ == '__main__':
         image_tag = cfg.tag_preamble + "/" + service['app_name'] + ":" + build_release
         if args.verbose or args.debug: print "[INFO] new build release tag: %s" % image_tag
 
+        backup_file(dockerfile)
+
         # cram the build-args & prepare Dockerfile
         build_args.extend([cfg.tag_preamble, cfg.maintainer])
         for item in service:
@@ -231,10 +244,13 @@ if __name__ == '__main__':
         # build [and push] the image
         if args.push:
             image_tag = cfg.registry + "/" + image_tag
-            build_image(os.getcwd()+"/"+service['app_name'], image_tag)
+
+        build_image(os.getcwd()+"/"+service['app_name'], image_tag)
+
+        restore_file(dockerfile)
+
+        if args.push:
             push_image(image_tag, cfg.insecure_registry)
-        else:
-            build_image(os.getcwd()+"/"+service['app_name'], image_tag)
 
         # adjust docker-compose.yml
         docker_compose_file = os.pardir + "/docker-compose.yml"
